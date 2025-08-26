@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Keyboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        #output-strip {
+            height: 48px;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        #output-strip::-webkit-scrollbar {
+            display: none;
+        }
+        #keyboard-container {
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        .keyboard-btn {
+            @apply m-0 rounded-none text-lg md:text-xl font-medium cursor-pointer transition-all duration-200 ease-in-out select-none flex-grow-0 flex-shrink-0
+                   shadow-sm hover:shadow-md active:shadow-inner;
+            padding: 0.75rem 1rem;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        .noun { @apply bg-blue-500 text-white hover:bg-blue-600; }
+        .verb { @apply bg-green-500 text-white hover:bg-green-600; }
+        .adjective { @apply bg-red-500 text-white hover:bg-red-600; }
+        .adverb { @apply bg-yellow-400 text-gray-800 hover:bg-yellow-500; }
+        .determiner { @apply bg-orange-400 text-gray-800 hover:bg-orange-500; }
+        .preposition { @apply bg-purple-500 text-white hover:bg-purple-600; }
+        .conjunction { @apply bg-pink-500 text-white hover:bg-pink-600; }
+        .other { @apply bg-gray-200 text-gray-800 hover:bg-gray-300; }
+        .action { @apply bg-blue-600 text-white hover:bg-blue-700; }
+        .caps-active { @apply bg-orange-400 text-white hover:bg-orange-500; }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            max-width: 90%;
+            width: 500px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            color: #4b5563;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex flex-col h-screen overflow-hidden">
+
+    <div id="output-strip" class="bg-white shadow-md p-3 px-4 text-xl md:text-2xl text-gray-800 overflow-x-auto whitespace-nowrap flex-shrink-0 relative">
+        <button id="settings-btn" class="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-gray-200 hover:bg-gray-300">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.26.44a2 2 0 0 0 .73 2.73l.09.15a2 2 0 0 1 0 2l-.08.14a2 2 0 0 0-.73 2.73l.43.25a2 2 0 0 1 1 1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.26-.44a2 2 0 0 0-.73-2.73l-.09-.15a2 2 0 0 1 0-2l.08-.14a2 2 0 0 0 .73-2.73l-.43-.25a2 2 0 0 1-1-1.73v-.18a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+        </button>
+        <span id="output-text" class="min-w-full"></span>
+    </div>
+
+    <div id="keyboard-container" class="flex-grow relative">
+        <div id="loading-overlay" class="loading-overlay hidden">
+            <svg class="animate-spin h-8 w-8 text-blue-500 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Thinking...</span>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Settings</h2>
+                <button id="close-modal-btn" class="p-2 rounded-full hover:bg-gray-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-lg">Mute Sound</span>
+                    <input type="checkbox" id="mute-toggle" class="form-checkbox h-5 w-5 text-blue-600 rounded">
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-lg mb-2">Speak on:</span>
+                    <div class="flex items-center space-x-4">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="speak-tap" id="single-tap-radio" value="single" checked class="form-radio h-4 w-4 text-blue-600">
+                            <span class="ml-2">Single Tap</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="speak-tap" id="double-tap-radio" value="double" class="form-radio h-4 w-4 text-blue-600">
+                            <span class="ml-2">Double Tap</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-lg mb-2">Keyboard Mode:</span>
+                    <div class="flex items-center space-x-4">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="keyboard-mode" id="words-mode-radio" value="words" checked class="form-radio h-4 w-4 text-blue-600">
+                            <span class="ml-2">Words</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="keyboard-mode" id="letters-mode-radio" value="letters" class="form-radio h-4 w-4 text-blue-600">
+                            <span class="ml-2">Letters</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" name="keyboard-mode" id="phrases-mode-radio" value="phrases" class="form-radio h-4 w-4 text-blue-600">
+                            <span class="ml-2">Phrases</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <label for="num-keys-input" class="text-lg">Number of Keys:</label>
+                    <input type="number" id="num-keys-input" value="20" min="1" max="50" class="w-20 p-2 border rounded text-right">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const outputText = document.getElementById('output-text');
+        const keyboardContainer = document.getElementById('keyboard-container');
+        const outputStrip = document.getElementById('output-strip');
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsModal = document.getElementById('settings-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const muteToggle = document.getElementById('mute-toggle');
+        const singleTapRadio = document.getElementById('single-tap-radio');
+        const doubleTapRadio = document.getElementById('double-tap-radio');
+        const wordsModeRadio = document.getElementById('words-mode-radio');
+        const lettersModeRadio = document.getElementById('letters-mode-radio');
+        const phrasesModeRadio = document.getElementById('phrases-mode-radio');
+        const numKeysInput = document.getElementById('num-keys-input');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        const speechSupported = 'speechSynthesis' in window;
+        if (!speechSupported) {
+            console.log('Speech Synthesis not supported in this browser.');
+        }
+
+        let settings = {
+            isMuted: false,
+            speakOnDoubleTap: false,
+            keyboardMode: 'words',
+            numKeys: 20,
+        };
+        let isCapsOn = false;
+
+        const typeClasses = {
+            'noun': 'noun',
+            'verb': 'verb',
+            'adjective': 'adjective',
+            'adverb': 'adverb',
+            'determiner': 'determiner',
+            'preposition': 'preposition',
+            'conjunction': 'conjunction',
+            'other': 'other',
+            'action': 'action',
+        };
+
+        const staticButtons = [
+            { word: ".", type: "other", isPunctuation: true },
+            { word: ",", type: "other", isPunctuation: true },
+            { word: "?", type: "other", isPunctuation: true },
+            { word: "!", type: "other", isPunctuation: true },
+            { word: "Caps", type: "action", action: "caps" },
+            { word: "Space", type: "action", action: "space" },
+            { word: "Backspace", type: "action", action: "backspace" },
+            { word: "Clear All", type: "action", action: "clear" },
+        ];
+        
+        // Hardcoded letter database for 'letters' mode
+        const letterDatabase = [
+            { word: "q", type: "other" }, { word: "w", type: "other" }, { word: "e", type: "other" }, { word: "r", type: "other" }, { word: "t", type: "other" }, { word: "y", type: "other" }, { word: "u", type: "other" }, { word: "i", type: "other" }, { word: "o", type: "other" }, { word: "p", type: "other" },
+            { word: "a", type: "other" }, { word: "s", type: "other" }, { word: "d", type: "other" }, { word: "f", type: "other" }, { word: "g", type: "other" }, { word: "h", type: "other" }, { word: "j", type: "other" }, { word: "k", type: "other" }, { word: "l", type: "other" },
+            { word: "z", type: "other" }, { word: "x", type: "other" }, { word: "c", type: "other" }, { word: "v", type: "other" }, { word: "b", type: "other" }, { word: "n", type: "other" }, { word: "m", type: "other" },
+        ];
+        
+        // Hardcoded phrase database for 'phrases' mode
+        const phraseDatabase = [
+            { word: "How are you?", type: "other" }, { word: "I want to go home.", type: "other" },
+            { word: "That's a good idea.", type: "other" }, { word: "Can I help you?", type: "other" },
+            { word: "I don't know.", type: "other" }, { word: "Thank you very much.", type: "other" },
+            { word: "I'm feeling well.", type: "other" }, { word: "What time is it?", type: "other" },
+            { word: "It's a beautiful day.", type: "other" }, { word: "Let's get started.", type: "other" },
+            { word: "Please be quiet.", type: "other" }, { word: "Where is the bathroom?", type: "other" },
+            { word: "I need some help.", type: "other" }, { word: "How much does it cost?", type: "other" },
+            { word: "I am hungry.", type: "other" },
+        ];
+
+
+        async function getPredictiveWords(lastWord) {
+            loadingOverlay.classList.remove('hidden');
+            let nextWords = [];
+
+            try {
+                switch (settings.keyboardMode) {
+                    case 'words':
+                        nextWords = await fetchWordsFromLLM(lastWord);
+                        break;
+                    case 'letters':
+                        nextWords = letterDatabase;
+                        break;
+                    case 'phrases':
+                        nextWords = phraseDatabase;
+                        break;
+                }
+            } catch (error) {
+                console.error("Error fetching words from LLM:", error);
+                // Fallback to a simple, hardcoded list if the API call fails
+                nextWords = [{ word: "The", type: "determiner" }, { word: "a", type: "determiner" }, { word: "I", type: "other" }, { word: "You", type: "other" }];
+            } finally {
+                loadingOverlay.classList.add('hidden');
+                renderKeyboard(nextWords);
+            }
+        }
+
+        async function fetchWordsFromLLM(lastWord) {
+            const prompt = `Generate a JSON array of 20 words that are a logical and grammatically correct continuation of the word or phrase "${lastWord}". For each word, include its 'word' and 'type' (part of speech, e.g., 'noun', 'verb', 'adjective', 'adverb', 'determiner', 'preposition', 'conjunction', or 'other'). Do not include any text outside the JSON array.`;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                "word": { "type": "STRING" },
+                                "type": { "type": "STRING" }
+                            },
+                            "propertyOrdering": ["word", "type"]
+                        }
+                    }
+                }
+            };
+
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            let retries = 0;
+            const maxRetries = 3;
+            const delay = (ms) => new Promise(res => setTimeout(res, ms));
+
+            while (retries < maxRetries) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 429) {
+                            console.warn('Rate limit exceeded. Retrying...');
+                            await delay(Math.pow(2, retries) * 1000); // Exponential backoff
+                            retries++;
+                            continue;
+                        } else {
+                            throw new Error(`API call failed with status: ${response.status}`);
+                        }
+                    }
+
+                    const result = await response.json();
+                    const jsonString = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!jsonString) {
+                        throw new Error("No content in API response.");
+                    }
+                    return JSON.parse(jsonString);
+
+                } catch (error) {
+                    console.error("API request error:", error);
+                    retries++;
+                    await delay(1000); // Wait before retrying
+                }
+            }
+            throw new Error("Failed to fetch words from LLM after multiple retries.");
+        }
+
+
+        function renderKeyboard(words) {
+            keyboardContainer.innerHTML = '';
+            
+            const wordsToRender = words.slice(0, settings.numKeys);
+
+            wordsToRender.forEach((wordData, index) => {
+                const button = document.createElement('button');
+                button.textContent = wordData.word;
+                button.className = `keyboard-btn ${typeClasses[wordData.type] || 'other'}`;
+                button.dataset.word = wordData.word;
+                button.dataset.type = wordData.type;
+                button.dataset.index = index;
+                keyboardContainer.appendChild(button);
+            });
+
+            staticButtons.forEach(buttonData => {
+                const button = document.createElement('button');
+                button.textContent = buttonData.word;
+                button.className = `keyboard-btn ${typeClasses[buttonData.type]}`;
+                button.dataset.word = buttonData.word;
+                button.dataset.type = buttonData.type;
+                if (buttonData.isPunctuation) {
+                    button.dataset.isPunctuation = 'true';
+                }
+                if (buttonData.action) {
+                    button.dataset.action = buttonData.action;
+                }
+                keyboardContainer.appendChild(button);
+            });
+        }
+
+        function speakText(text) {
+            if (speechSupported && !settings.isMuted && text.trim() !== '') {
+                const utterance = new SpeechSynthesisUtterance(text.trim());
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        keyboardContainer.addEventListener('click', (event) => {
+            if (settings.speakOnDoubleTap) return;
+            handleButtonClick(event);
+        });
+        keyboardContainer.addEventListener('dblclick', (event) => {
+            if (!settings.speakOnDoubleTap) return;
+            handleButtonClick(event);
+        });
+
+        function handleButtonClick(event) {
+            const clickedButton = event.target.closest('.keyboard-btn');
+            if (!clickedButton) return;
+
+            const action = clickedButton.dataset.action;
+            let word = clickedButton.dataset.word;
+            const isPunctuation = clickedButton.dataset.isPunctuation;
+
+            if (action === 'caps') {
+                isCapsOn = !isCapsOn;
+                clickedButton.classList.toggle('caps-active', isCapsOn);
+                return;
+            } else if (action === 'space') {
+                outputText.textContent += ' ';
+                speakText(' ');
+            } else if (action === 'backspace') {
+                let currentText = outputText.textContent;
+                const lastSpaceIndex = currentText.trimEnd().lastIndexOf(' ');
+                if (lastSpaceIndex !== -1) {
+                    outputText.textContent = currentText.substring(0, lastSpaceIndex + 1);
+                } else {
+                    outputText.textContent = '';
+                }
+                const newLastWord = outputText.textContent.trim().split(' ').pop() || 'start';
+                getPredictiveWords(newLastWord);
+            } else if (action === 'clear') {
+                outputText.textContent = '';
+                getPredictiveWords('start');
+            } else if (word) {
+                if (isCapsOn) {
+                    word = word.charAt(0).toUpperCase() + word.slice(1);
+                    isCapsOn = false;
+                    const capsButton = document.querySelector('[data-action="caps"]');
+                    if (capsButton) capsButton.classList.remove('caps-active');
+                }
+
+                if (isPunctuation) {
+                    outputText.textContent = outputText.textContent.trimEnd() + word;
+                } else {
+                    outputText.textContent +=
