@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Keyboard</title>
+    <!--
+      Load Tailwind CSS from a CDN for utility-first styling.
+      This makes the design responsive and modern with minimal custom CSS.
+    -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Define the font family for the entire body */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Custom styles for the output strip to ensure it is a thin line at the top */
+        #output-strip {
+            height: 48px; /* Fixed height for the output strip */
+            -ms-overflow-style: none;  /* Hide scrollbar for IE and Edge */
+            scrollbar-width: none;  /* Hide scrollbar for Firefox */
+        }
+        /* Hide scrollbar for Webkit browsers (Chrome, Safari) */
+        #output-strip::-webkit-scrollbar {
+            display: none;
+        }
+
+        /*
+          The main keyboard container uses flexbox to wrap content.
+          No gap is specified to make the keys flush against each other.
+        */
+        #keyboard-container {
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start; /* Aligns content at the start to prevent blank space */
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        /*
+          Base styles for all keyboard buttons.
+          - flex-grow-0 and flex-shrink-0 ensure they don't stretch.
+          - dynamic padding based on content.
+        */
+        .keyboard-btn {
+            @apply m-0 rounded-none text-lg md:text-xl font-medium cursor-pointer transition-all duration-200 ease-in-out select-none flex-grow-0 flex-shrink-0
+                   shadow-sm hover:shadow-md active:shadow-inner;
+            padding: 0.75rem 1rem;
+            border: 1px solid #e5e7eb;
+            /* Using a box-shadow for a press-down effect */
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        /* Color-coding based on data-type attribute */
+        .noun { @apply bg-blue-500 text-white hover:bg-blue-600; }
+        .verb { @apply bg-green-500 text-white hover:bg-green-600; }
+        .adjective { @apply bg-red-500 text-white hover:bg-red-600; }
+        .adverb { @apply bg-yellow-400 text-gray-800 hover:bg-yellow-500; }
+        .determiner { @apply bg-orange-400 text-gray-800 hover:bg-orange-500; }
+        .preposition { @apply bg-purple-500 text-white hover:bg-purple-600; }
+        .conjunction { @apply bg-pink-500 text-white hover:bg-pink-600; }
+        .other { @apply bg-gray-200 text-gray-800 hover:bg-gray-300; }
+        .action { @apply bg-blue-600 text-white hover:bg-blue-700; }
+        .caps-active { @apply bg-orange-400 text-white hover:bg-orange-500; }
+    </style>
+</head>
+<body class="bg-gray-100 flex flex-col h-screen overflow-hidden">
+
+    <!--
+      The output strip at the very top.
+      - flex-shrink-0 ensures it doesn't shrink when other elements grow.
+    -->
+    <div id="output-strip" class="bg-white shadow-md p-3 px-4 text-xl md:text-2xl text-gray-800 overflow-x-auto whitespace-nowrap flex-shrink-0">
+        <span id="output-text" class="min-w-full"></span>
+    </div>
+
+    <!--
+      The main keyboard area, fills the remaining vertical space.
+      The `align-content: flex-start` style property is the key change here,
+      it makes sure the rows are pushed to the top and don't spread out.
+    -->
+    <div id="keyboard-container" class="flex-grow">
+        <!-- Nouns (blue) -->
+        <button class="keyboard-btn noun" data-word="car" data-type="noun">car</button>
+        <button class="keyboard-btn noun" data-word="person" data-type="noun">person</button>
+        <button class="keyboard-btn noun" data-word="house" data-type="noun">house</button>
+        <button class="keyboard-btn noun" data-word="time" data-type="noun">time</button>
+        <button class="keyboard-btn noun" data-word="dog" data-type="noun">dog</button>
+        <button class="keyboard-btn noun" data-word="city" data-type="noun">city</button>
+        <button class="keyboard-btn noun" data-word="river" data-type="noun">river</button>
+        <button class="keyboard-btn noun" data-word="tree" data-type="noun">tree</button>
+        <button class="keyboard-btn noun" data-word="book" data-type="noun">book</button>
+        <button class="keyboard-btn noun" data-word="computer" data-type="noun">computer</button>
+        <button class="keyboard-btn noun" data-word="money" data-type="noun">money</button>
+        <button class="keyboard-btn noun" data-word="phone" data-type="noun">phone</button>
+        <button class="keyboard-btn noun" data-word="food" data-type="noun">food</button>
+        <button class="keyboard-btn noun" data-word="game" data-type="noun">game</button>
+        <button class="keyboard-btn noun" data-word="work" data-type="noun">work</button>
+        <button class="keyboard-btn noun" data-word="sun" data-type="noun">sun</button>
+        <button class="keyboard-btn noun" data-word="moon" data-type="noun">moon</button>
+        <button class="keyboard-btn noun" data-word="star" data-type="noun">star</button>
+        <button class="keyboard-btn noun" data-word="world" data-type="noun">world</button>
+        <button class="keyboard-btn noun" data-word="water" data-type="noun">water</button>
+        <!-- Verbs (green) -->
+        <button class="keyboard-btn verb" data-word="run" data-type="verb">run</button>
+        <button class="keyboard-btn verb" data-word="go" data-type="verb">go</button>
+        <button class="keyboard-btn verb" data-word="is" data-type="verb">is</button>
+        <button class="keyboard-btn verb" data-word="eat" data-type="verb">eat</button>
+        <button class="keyboard-btn verb" data-word="speak" data-type="verb">speak</button>
+        <button class="keyboard-btn verb" data-word="walk" data-type="verb">walk</button>
+        <button class="keyboard-btn verb" data-word="see" data-type="verb">see</button>
+        <button class="keyboard-btn verb" data-word="write" data-type="verb">write</button>
+        <button class="keyboard-btn verb" data-word="read" data-type="verb">read</button>
+        <button class="keyboard-btn verb" data-word="think" data-type="verb">think</button>
+        <button class="keyboard-btn verb" data-word="feel" data-type="verb">feel</button>
+        <button class="keyboard-btn verb" data-word="know" data-type="verb">know</button>
+        <button class="keyboard-btn verb" data-word="like" data-type="verb">like</button>
+        <button class="keyboard-btn verb" data-word="want" data-type="verb">want</button>
+        <button class="keyboard-btn verb" data-word="need" data-type="verb">need</button>
+        <button class="keyboard-btn verb" data-word="make" data-type="verb">make</button>
+        <button class="keyboard-btn verb" data-word="get" data-type="verb">get</button>
+        <button class="keyboard-btn verb" data-word="use" data-type="verb">use</button>
+        <!-- Adjectives (red) -->
+        <button class="keyboard-btn adjective" data-word="big" data-type="adjective">big</button>
+        <button class="keyboard-btn adjective" data-word="small" data-type="adjective">small</button>
+        <button class="keyboard-btn adjective" data-word="happy" data-type="adjective">happy</button>
+        <button class="keyboard-btn adjective" data-word="sad" data-type="adjective">sad</button>
+        <button class="keyboard-btn adjective" data-word="new" data-type="adjective">new</button>
+        <button class="keyboard-btn adjective" data-word="old" data-type="adjective">old</button>
+        <button class="keyboard-btn adjective" data-word="good" data-type="adjective">good</button>
+        <button class="keyboard-btn adjective" data-word="bad" data-type="adjective">bad</button>
+        <button class="keyboard-btn adjective" data-word="red" data-type="adjective">red</button>
+        <button class="keyboard-btn adjective" data-word="blue" data-type="adjective">blue</button>
+        <button class="keyboard-btn adjective" data-word="green" data-type="adjective">green</button>
+        <button class="keyboard-btn adjective" data-word="hot" data-type="adjective">hot</button>
+        <button class="keyboard-btn adjective" data-word="cold" data-type="adjective">cold</button>
+        <button class="keyboard-btn adjective" data-word="fast" data-type="adjective">fast</button>
+        <button class="keyboard-btn adjective" data-word="slow" data-type="adjective">slow</button>
+        <!-- Adverbs (yellow) -->
+        <button class="keyboard-btn adverb" data-word="quickly" data-type="adverb">quickly</button>
+        <button class="keyboard-btn adverb" data-word="slowly" data-type="adverb">slowly</button>
+        <button class="keyboard-btn adverb" data-word="very" data-type="adverb">very</button>
+        <button class="keyboard-btn adverb" data-word="here" data-type="adverb">here</button>
+        <button class="keyboard-btn adverb" data-word="there" data-type="adverb">there</button>
+        <button class="keyboard-btn adverb" data-word="now" data-type="adverb">now</button>
+        <!-- Determiners (orange) -->
+        <button class="keyboard-btn determiner" data-word="the" data-type="determiner">the</button>
+        <button class="keyboard-btn determiner" data-word="a" data-type="determiner">a</button>
+        <button class="keyboard-btn determiner" data-word="this" data-type="determiner">this</button>
+        <button class="keyboard-btn determiner" data-word="that" data-type="determiner">that</button>
+        <button class="keyboard-btn determiner" data-word="these" data-type="determiner">these</button>
+        <button class="keyboard-btn determiner" data-word="those" data-type="determiner">those</button>
+        <button class="keyboard-btn determiner" data-word="my" data-type="determiner">my</button>
+        <button class="keyboard-btn determiner" data-word="your" data-type="determiner">your</button>
+        <button class="keyboard-btn determiner" data-word="his" data-type="determiner">his</button>
+        <button class="keyboard-btn determiner" data-word="her" data-type="determiner">her</button>
+        <!-- Prepositions (purple) -->
+        <button class="keyboard-btn preposition" data-word="in" data-type="preposition">in</button>
+        <button class="keyboard-btn preposition" data-word="on" data-type="preposition">on</button>
+        <button class="keyboard-btn preposition" data-word="of" data-type="preposition">of</button>
+        <button class="keyboard-btn preposition" data-word="from" data-type="preposition">from</button>
+        <button class="keyboard-btn preposition" data-word="to" data-type="preposition">to</button>
+        <button class="keyboard-btn preposition" data-word="at" data-type="preposition">at</button>
+        <button class="keyboard-btn preposition" data-word="with" data-type="preposition">with</button>
+        <button class="keyboard-btn preposition" data-word="for" data-type="preposition">for</button>
+        <button class="keyboard-btn preposition" data-word="by" data-type="preposition">by</button>
+        <button class="keyboard-btn preposition" data-word="about" data-type="preposition">about</button>
+        <!-- Conjunctions (pink) -->
+        <button class="keyboard-btn conjunction" data-word="and" data-type="conjunction">and</button>
+        <button class="keyboard-btn conjunction" data-word="but" data-type="conjunction">but</button>
+        <button class="keyboard-btn conjunction" data-word="or" data-type="conjunction">or</button>
+        <button class="keyboard-btn conjunction" data-word="so" data-type="conjunction">so</button>
+        <button class="keyboard-btn conjunction" data-word="because" data-type="conjunction">because</button>
+        <!-- Pronouns (gray) -->
+        <button class="keyboard-btn other" data-word="I" data-type="other">I</button>
+        <button class="keyboard-btn other" data-word="it" data-type="other">it</button>
+        <button class="keyboard-btn other" data-word="you" data-type="other">you</button>
+        <button class="keyboard-btn other" data-word="we" data-type="other">we</button>
+        <button class="keyboard-btn other" data-word="they" data-type="other">they</button>
+        <button class="keyboard-btn other" data-word="he" data-type="other">he</button>
+        <button class="keyboard-btn other" data-word="she" data-type="other">she</button>
+        <button class="keyboard-btn other" data-word="it's" data-type="other">it's</button>
+        <!-- Punctuation -->
+        <button class="keyboard-btn other" data-word="." data-is-punctuation data-type="other">.</button>
+        <button class="keyboard-btn other" data-word="," data-is-punctuation data-type="other">,</button>
+        <button class="keyboard-btn other" data-word="?" data-is-punctuation data-type="other">?</button>
+        <button class="keyboard-btn other" data-word="!" data-is-punctuation data-type="other">!</button>
+        <button class="keyboard-btn other" data-word="'s" data-type="other">'s</button>
+
+        <!--
+          Action buttons with specific functionalities.
+        -->
+        <button class="keyboard-btn action" data-action="caps" data-type="action">Caps</button>
+        <button class="keyboard-btn action" data-action="space" data-type="action">Space</button>
+        <button class="keyboard-btn action" data-action="backspace" data-type="action">Backspace</button>
+        <button class="keyboard-btn action" data-action="clear" data-type="action">Clear All</button>
+    </div>
+
+    <script>
+        // Get references to the output display, keyboard container, and caps button
+        const outputText = document.getElementById('output-text');
+        const keyboardContainer = document.getElementById('keyboard-container');
+        const outputStrip = document.getElementById('output-strip');
+        const capsButton = document.querySelector('[data-action="caps"]');
+
+        // Check for browser support for speech synthesis
+        const speechSupported = 'speechSynthesis' in window;
+        if (!speechSupported) {
+            console.log('Speech Synthesis not supported in this browser.');
+        }
+
+        // State variable to track if Caps Lock is active
+        let isCapsOn = false;
+
+        // Add a click listener to the entire keyboard container for efficiency
+        keyboardContainer.addEventListener('click', (event) => {
+            const clickedButton = event.target.closest('.keyboard-btn');
+            if (!clickedButton) {
+                return;
+            }
+
+            const action = clickedButton.dataset.action;
+            let word = clickedButton.dataset.word;
+            const isPunctuation = clickedButton.dataset.isPunctuation;
+
+            // Handle actions first
+            if (action === 'caps') {
+                isCapsOn = !isCapsOn;
+                clickedButton.classList.toggle('caps-active', isCapsOn);
+                return; // Exit early as no word is added
+            } else if (action === 'space') {
+                outputText.textContent += ' ';
+            } else if (action === 'backspace') {
+                let currentText = outputText.textContent;
+                const lastSpaceIndex = currentText.trimEnd().lastIndexOf(' ');
+                if (lastSpaceIndex !== -1) {
+                    outputText.textContent = currentText.substring(0, lastSpaceIndex + 1);
+                } else {
+                    outputText.textContent = '';
+                }
+            } else if (action === 'clear') {
+                outputText.textContent = '';
+            } else if (word) {
+                // Check if Caps Lock is on and capitalize the word if it is
+                if (isCapsOn) {
+                    word = word.charAt(0).toUpperCase() + word.slice(1);
+                    // Deactivate Caps Lock after use
+                    isCapsOn = false;
+                    capsButton.classList.remove('caps-active');
+                }
+
+                if (isPunctuation) {
+                    // Punctuation is added directly after the previous word, no space needed
+                    outputText.textContent = outputText.textContent.trimEnd() + word;
+                } else {
+                    outputText.textContent += word;
+                }
+
+                // Add a space after the word, but not before punctuation
+                if (!isPunctuation) {
+                    outputText.textContent += ' ';
+                }
+
+                // Speak the word out loud
+                if (speechSupported && word.trim() !== '') {
+                    const utterance = new SpeechSynthesisUtterance(word.trim());
+                    // Optional: set a friendly voice for the utterance
+                    const voices = window.speechSynthesis.getVoices();
+                    utterance.voice = voices.find(v => v.lang === 'en-US');
+                    window.speechSynthesis.speak(utterance);
+                }
+            }
+
+            // Scroll to the end of the output strip to show the latest text
+            outputStrip.scrollLeft = outputStrip.scrollWidth;
+        });
+    </script>
+</body>
+</html>
