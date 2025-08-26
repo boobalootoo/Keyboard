@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Next Word Predictor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0f172a; --panel:#111827; --muted:#9ca3af; --fg:#e5e7eb; --acc:#22d3ee;
+      --chip:#1f2937; --chipHover:#374151; --ok:#10b981; --warn:#f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; background: var(--bg); color: var(--fg); }
+    .wrap { max-width: 900px; margin: 40px auto; padding: 0 16px; }
+    h1 { font-size: 28px; margin: 0 0 16px; }
+    .card { background: var(--panel); border: 1px solid #1f2937; border-radius: 16px; padding: 18px; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    input[type="text"], textarea {
+      width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid #374151; background: #0b1220; color: var(--fg);
+      font-size: 16px; outline: none;
+    }
+    input[type="file"] { color: var(--muted); }
+    .btn {
+      background: linear-gradient(180deg, #0ea5e9, #0891b2);
+      color: white; border: none; padding: 10px 14px; border-radius: 12px; cursor: pointer; font-weight: 600;
+    }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .ghost { background: #0b1220; border: 1px dashed #334155; color: var(--fg); }
+    .muted { color: var(--muted); font-size: 13px; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 10px; }
+    .chip {
+      background: var(--chip); border: 1px solid #283142; padding: 8px 12px; border-radius: 999px; cursor: pointer; user-select: none;
+    }
+    .chip:hover { background: var(--chipHover); }
+    .stat { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius: 999px; background:#0b1220; border:1px solid #273246; }
+    .pill { padding: 4px 8px; border-radius: 999px; border: 1px solid #273246; background:#0b1220; }
+    .switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+    .switch input { width: 18px; height: 18px; }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background:#0b1220; border:1px solid #273246; border-bottom-width:2px; padding:2px 6px; border-radius:6px; color:var(--fg); }
+    .footer { margin-top: 12px; display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content: space-between; }
+    .progress { height: 10px; background:#0b1220; border:1px solid #273246; border-radius: 999px; overflow:hidden; }
+    .bar { height:100%; width:0%; background: linear-gradient(90deg, #06b6d4, #10b981); transition: width .2s ease; }
+    .tips { font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .grid2 { display:grid; grid-template-columns: 1fr; gap:16px; }
+    @media (min-width: 760px) { .grid2 { grid-template-columns: 2fr 1fr; } }
+    .badge { font-size: 12px; background:#0b1220; border:1px solid #273246; padding:4px 8px; border-radius:999px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Next Word Predictor</h1>
+    <div class="card grid2">
+      <div>
+        <label class="muted">Type your text</label>
+        <input id="inputText" type="text" placeholder="Start typing… e.g., The quick brown" autocomplete="off" />
+        <div class="chips" id="suggestions"></div>
+
+        <div class="footer">
+          <div class="row">
+            <span class="stat"><span class="badge" id="modelBadge">Demo model</span></span>
+            <span class="pill" id="vocabPill">vocab: —</span>
+            <span class="pill" id="pairsPill">pairs: —</span>
+          </div>
+          <div class="row">
+            <label class="switch">
+              <input id="autoPredict" type="checkbox" checked />
+              <span class="muted">Predict as you type</span>
+            </label>
+            <label class="switch">
+              <input id="fallbackGlobal" type="checkbox" checked />
+              <span class="muted">Fallback to common words</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="tips">
+          <strong>Tips:</strong>
+          Press <span class="kbd">Tab</span> to accept the top suggestion. Use <span class="kbd">1</span>–<span class="kbd">9</span> to insert a suggestion. Click a chip to add it.
+        </div>
+      </div>
+
+      <div>
+        <label class="muted">Load a bigram CSV (word1,word2,count)</label>
+        <div class="row">
+          <input id="csvFile" type="file" accept=".csv,text/csv" />
+          <button class="btn" id="loadBtn">Build model</button>
+          <button class="btn ghost" id="clearBtn">Clear model</button>
+        </div>
+        <div style="margin-top:10px">
+          <div class="progress"><div class="bar" id="bar"></div></div>
+          <div class="muted" id="status">No file loaded. Using a tiny demo model.</div>
+        </div>
+        <div class="tips" style="margin-top:12px">
+          CSV requirements: three columns <code>word1,word2,count</code> (headers optional). Large files can take a while to parse in-browser.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- Data structures ---
+    // Map<string, Array<[nextWord, count]>> after building
+    let index = new Map();
+    let totals = new Map(); // word -> total outgoing count
+    let globalNext = new Map(); // nextWord -> total count (for fallback)
+    let built = false;
+
+    // Small demo model (so it works without a CSV)
+    const demoPairs = [
+      ["the","cat",120],["the","dog",115],["the","sun",80],["the","world",60],["the","best",50],
+      ["quick","brown",90],["brown","fox",85],["the","quick",70],["in","the",300],["to","the",250],
+      ["on","the",200],["for","the",190],["with","the",170],["at","the",160],["the","same",40],
+      ["hello","world",100],["how","are",95],["are","you",180],["thank","you",140],["let's","go",120],
+    ];
+
+    function useDemoModel() {
+      index.clear(); totals.clear(); globalNext.clear();
+      for (const [w1, w2, c] of demoPairs) addCount(w1, w2, c);
+      finalizeIndex();
+      built = false;
+      document.getElementById('modelBadge').textContent = 'Demo model';
+      updateStats();
+      setStatus('Using built-in demo model. Upload a CSV for real predictions.');
+    }
+
+    // Normalize a token (simple, fast)
+    function norm(w) {
+      return w.toLowerCase().replace(/^[^a-z0-9']+|[^a-z0-9']+$/gi,'');
+    }
+
+    function addCount(w1, w2, c) {
+      const a = norm(w1); const b = norm(w2);
+      if (!a || !b) return;
+      if (!index.has(a)) index.set(a, new Map());
+      const inner = index.get(a);
+      inner.set(b, (inner.get(b) || 0) + c);
+      totals.set(a, (totals.get(a) || 0) + c);
+      globalNext.set(b, (globalNext.get(b) || 0) + c);
+    }
+
+    function finalizeIndex() {
+      // Convert inner maps to sorted arrays for quick top-k access
+      for (const [w1, inner] of index) {
+        const arr = Array.from(inner.entries()).sort((a,b) => b[1] - a[1]);
+        index.set(w1, arr);
+      }
+      // Sort global fallback list
+      globalFallback = Array.from(globalNext.entries()).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+    }
+
+    let globalFallback = [];
+
+    function updateStats() {
+      const vocab = index.size;
+      let pairCount = 0;
+      for (const arr of index.values()) pairCount += arr.length;
+      document.getElementById('vocabPill').textContent = `vocab: ${vocab.toLocaleString()}`;
+      document.getElementById('pairsPill').textContent = `pairs: ${pairCount.toLocaleString()}`;
+    }
+
+    function setStatus(msg) {
+      document.getElementById('status').textContent = msg;
+    }
+
+    // --- CSV parsing (no libraries) ---
+    async function buildFromCSV(file) {
+      if (!file) { setStatus('Choose a CSV file first.'); return; }
+      index.clear(); totals.clear(); globalNext.clear();
+      setStatus('Reading file…');
+      const text = await file.text(); // Note: large files may be heavy
+      const lines = text.split(/\r?\n/);
+      const totalLines = lines.length;
+      const hasHeader = /word1/i.test(lines[0]) && /word2/i.test(lines[0]) && /count/i.test(lines[0]);
+      let start = hasHeader ? 1 : 0;
+
+      const bar = document.getElementById('bar');
+      for (let i = start; i < totalLines; i++) {
+        const line = lines[i];
+        if (!line) continue;
+        // naive CSV split; works for typical simple 3-column files
+        // supports quoted fields with commas, roughly
+        const cells = safeSplitCSV(line);
+        if (cells.length < 2) continue;
+        const w1 = cells[0], w2 = cells[1];
+        const c = cells.length >= 3 ? Number(cells[2]) || 1 : 1;
+        addCount(w1, w2, c);
+        if ((i & 4095) === 0) {
+          const pct = Math.floor((i / totalLines) * 100);
+          bar.style.width = pct + '%';
+          if ((i & 16383) === 0) await new Promise(r=>setTimeout(r,0)); // yield
+        }
+      }
+      finalizeIndex();
+      bar.style.width = '100%';
+      built = true;
+      document.getElementById('modelBadge').textContent = 'Custom CSV loaded';
+      updateStats();
+      setStatus(`Finished building model from CSV (${(totalLines - start).toLocaleString()} lines).`);
+      setTimeout(()=>{ bar.style.width = '0%'; }, 1000);
+    }
+
+    function safeSplitCSV(line) {
+      // Simple CSV parser for 3 columns with optional quotes
+      const out = [];
+      let cur = '';
+      let inQ = false;
+      for (let i=0;i<line.length;i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+          else inQ = !inQ;
+        } else if (ch === ',' && !inQ) {
+          out.push(cur); cur = '';
+        } else {
+          cur += ch;
+        }
+      }
+      out.push(cur);
+      return out.map(s=>s.trim().replace(/^"|"$/g,''));
+    }
+
+    // --- Prediction logic ---
+    function topKNext(word, k=10) {
+      const w = norm(word);
+      let res = [];
+      if (w && index.has(w)) {
+        const arr = index.get(w);
+        for (let i=0; i<Math.min(k, arr.length); i++) res.push(arr[i][0]);
+      }
+      if (res.length < k && document.getElementById('fallbackGlobal').checked) {
+        // pad with global common next words (excluding duplicates and the word itself)
+        for (const cand of globalFallback) {
+          if (cand === w) continue;
+          if (!res.includes(cand)) res.push(cand);
+          if (res.length >= k) break;
+        }
+      }
+      return res.slice(0,k);
+    }
+
+    function predictFromText(text) {
+      // Use last token as the context
+      const tokens = text.split(/\s+/).filter(Boolean);
+      if (tokens.length === 0) return topKNext('', 10);
+      return topKNext(tokens[tokens.length - 1], 10);
+    }
+
+    function showSuggestions(words) {
+      const box = document.getElementById('suggestions');
+      box.innerHTML = '';
+      words.forEach((w, i) => {
+        const el = document.createElement('div');
+        el.className = 'chip';
+        el.textContent = `${w}`;
+        el.title = `Insert (${i+1})`;
+        el.addEventListener('click', ()=> insertSuggestion(w));
+        box.appendChild(el);
+      });
+    }
+
+    function insertSuggestion(word) {
+      const input = document.getElementById('inputText');
+      const text = input.value;
+      const needsSpace = text.length && !/\s$/.test(text);
+      const add = needsSpace ? ' ' + word : word;
+      input.value = text + add;
+      // Immediately predict next suggestions after inserting
+      if (document.getElementById('autoPredict').checked) {
+        showSuggestions(predictFromText(input.value));
+      }
+      // move caret to end
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+
+    // --- Event wiring ---
+    const inputEl = document.getElementById('inputText');
+
+    inputEl.addEventListener('input', () => {
+      if (document.getElementById('autoPredict').checked) {
+        showSuggestions(predictFromText(inputEl.value));
+      }
+    });
+
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const chips = [...document.querySelectorAll('#suggestions .chip')];
+        if (chips.length) insertSuggestion(chips[0].textContent);
+      } else if (/^[1-9]$/.test(e.key)) {
+        const idx = Number(e.key) - 1;
+        const chips = [...document.querySelectorAll('#suggestions .chip')];
+        if (idx < chips.length) {
+          e.preventDefault();
+          insertSuggestion(chips[idx].textContent);
+        }
+      }
+    });
+
+    document.getElementById('loadBtn').addEventListener('click', async () => {
+      const file = document.getElementById('csvFile').files[0];
+      if (!file) { setStatus('Please choose a CSV file.'); return; }
+      setStatus(`Parsing "${file.name}"…`);
+      await buildFromCSV(file);
+      showSuggestions(predictFromText(inputEl.value));
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      document.getElementById('csvFile').value = '';
+      document.getElementById('bar').style.width = '0%';
+      useDemoModel();
+      showSuggestions(predictFromText(inputEl.value));
+    });
+
+    document.getElementById('autoPredict').addEventListener('change', () => {
+      if (document.getElementById('autoPredict').checked) {
+        showSuggestions(predictFromText(inputEl.value));
+      }
+    });
+
+    document.getElementById('fallbackGlobal').addEventListener('change', () => {
+      showSuggestions(predictFromText(inputEl.value));
+    });
+
+    // --- Init ---
+    useDemoModel();
+    showSuggestions(topKNext('',10));
+  </script>
+</body>
+</html>
